@@ -40,7 +40,4 @@ In this tutorial, we want to focus on the data vizualization using RStudio.
 
 We need to load the *GenomicRanges*, *rtracklayer* and *IRanges* packages. To read the .bigwig file to R, we use the *import* function from the *rtracklayer* package. The result is a *GRanges* object, in which each read is represented as a genomic interval.
 
-```RScript library (GenomicRanges)```
-```R library(rtracklayer)```
-```R library(IRanges)```
-```R SampleName_A = import ('/path/to/trackFolder/GRCh38/.ucsc.bigWig')```
+
