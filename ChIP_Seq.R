@@ -1,187 +1,130 @@
+#Install the required R packages and load the libaries in R
+#optional
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#  install.packages("BiocManager")
+#BiocManager::install("Gviz")
+
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#  install.packages("BiocManager")
+#BiocManager::install("biomaRt")
+
+
 library(GenomicRanges)
 library(rtracklayer)
 library(IRanges)
 
-WM9p44_sictrl= import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p44-sictrl_7b_H3K27ac.ucsc.bigWig')
-WM9p44_sictrl_Input= import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p44-sictrl-7b_Input.ucsc.bigWig')
-WM9p44_siHADAC2 = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p44-siHADAC2-12_H3K27ac.ucsc.bigWig')
-WM9p44_siHADAC2_Input = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p44-siHADAC2-12_Input.ucsc.bigWig')
-WM9p85_sictrl = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p85-sictrl-2_H3K27ac.ucsc.bigWig')
-WM9p85_sictrl_Input = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p85-sictrl-2_Input.ucsc.bigWig')
-WM9p85_siHADAC2 = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p85-siHADAC2-4_H3K27ac.ucsc.bigWig')
-WM9p85_siHADAC2_Input = import ('/Volumes/LacieRAID/ChIPseq/tracks/GRCh38/ChIP-WM9p85-siHADAC2-4_Input.ucsc.bigWig')
-
-library (chipseq)
-
-prepareChIPseq = function(reads) {
-  frag.len =median (estimate.mean.fraglen (reads) )
-  cat ( paste0( 'Median fragment size for this library is' , round (frag.len)))
-  reads.extended =resize(reads, width =frag.len)
-}
-
-WM9p44_sictrl= prepareChIPseq (WM9p44_sictrl)
-WM9p44_sictrl_Input= prepareChIPseq (WM9p44_sictrl_Input)
-WM9p44_siHADAC2 = prepareChIPseq (WM9p44_siHADAC2)
-WM9p44_siHADAC2_Input = prepareChIPseq (WM9p44_siHADAC2_Input)
-WM9p85_sictrl = prepareChIPseq(WM9p85_sictrl)
-WM9p85_sictrl_Input = prepareChIPseq(WM9p85_sictrl_Input)
-WM9p85_siHADAC2 = prepareChIPseq(WM9p85_siHADAC2 )
-WM9p85_siHADAC2_Input = prepareChIPseq(WM9p85_siHADAC2_Input)
+#load your data in R (NOTE: replace SampleNames and PATH due to your naming within your computer environment)
+SampleNameA= import ('/path/to/your/SampleNameA.ucsc.bigWig')
+SampleNameB= import ('/path/to/your/SampleNameB.ucsc.bigWig')
 
 
-
-
-#Obtaining object si for hg38
+#Obtaining object "si" for hg38
+#To perform the binning step in the next section we first need to generate a seqinfo (si) file. 
+# We get chromosome lengths from the BSgenome.Hsapiens.UCSC.hg38 package, in which the chromosome names are in ensembl format. 
 library(BSgenome.Hsapiens.UCSC.hg38)
 genome= BSgenome.Hsapiens.UCSC.hg38
 si=seqinfo(genome)
+#We add the prefix ´chr` to chromosome names: 
 si=si[paste0('chr',c(1:22,'X','Y'))]
 si
+
+#Binning the ChIP-Seq and Input samples
+#The main purpose of this step is to count how many reads map to each of the pre-established genomic intervals. 
+# Next, we use the tileGenome function from the GenomicRanges package to generate a GRanges object with intervals 
+# covering the genome (here only chr13) in tiles (bins) of size of 200 bp.
 
 binsize = 200
 bins= tileGenome(si['chr13'], tilewidth=binsize,cut.last.tile.in.chrom = TRUE)
 bins
 
-#Binning
+#Counting how many reads fall into each bin by a function called BinChIP. The two arguments "bins" and "reads" are both GRanges objects.
 
 BinChIP = function ( reads, bins) {
   mcols(bins)$score = countOverlaps( bins, reads) 
   return (bins)
 }
 
-WM9p44_sictrl.200bins = BinChIP (WM9p44_sictrl, bins)
-WM9p44_sictrl_Input.200bins = BinChIP (WM9p44_sictrl_Input, bins)
-WM9p44_siHADAC2.200bins = BinChIP (WM9p44_siHADAC2, bins)
-WM9p85_sictrl.200bins = BinChIP (WM9p85_sictrl, bins)
-WM9p85_sictrl_Input.200bins = BinChIP (WM9p85_sictrl_Input, bins)
-WM9p85_siHADAC2.200bins = BinChIP (WM9p85_siHADAC2, bins)
+SampleNameA.200bins = BinChIP (SampleNameA, bins)
+SampleNameB.200bins = BinChIP (SampleNameB, bins)
 
+#Visualisation of the ChIP-Seq data with the R package "Gviz"
+
+#First load the required packages
 library(Gviz)
-
 library(biomaRt)
+
+# The biomaRt package is used to obtain the annotation queiing the biomart database: https://www.ensembl.org/info/data/biomart/index.html
+# First search for the required genome and needed information 
 mart = useMart (biomart = "ENSEMBL_MART_ENSEMBL")
 mart = useDataset("hsapiens_gene_ensembl", mart=mart)
+
 listAttributes(mart)
 
+#Add a biomart feature map depicting the external gene names:
 fm= Gviz:::.getBMFeatureMap()
 fm["sympol"]="external_gene_name"
 
-bm = BiomartGeneRegionTrack(chromosome = 'chr13', genome = "hg38", start = 78583089, end= 78600000, biomart = mart, filters = list("with_refseq_mrna"=TRUE), size=4, name = "RefSeq", utr5="red3", utr3="red3", protein_coding="black", col.line=NULL, cex=7, collapseTranscripts="longest", featureMap = fm)
+#Create biomart object ("bm")
+bm = BiomartGeneRegionTrack(chromosome = 'chr13', genome = "hg38", 
+                            start = 78500000, end= 78600000, biomart = mart,
+                            filters = list("with_refseq_mrna"=TRUE), size=4, 
+                            name = "RefSeq", utr5="red3", utr3="red3", 
+                            protein_coding="black", col.line=NULL, cex=7, 
+                            collapseTranscripts="longest", featureMap = fm)
 
+#We also include the GenomeAxisTrack object which is a coordinate axis showing the genomic span of the analyzed region.
 AT= GenomeAxisTrack()
 
-plotTracks(c(bm,AT), from=78583089, to= 78700000,transcriptAnnotation="symbol",  window="auto", cex.title=1, fontsize=10 )
+#You can plot your generated biomart object and the Genome axis track withaout any file information to check if it work out:
 
-WM9p44_sictrl.track = DataTrack(WM9p44_sictrl.200bins, 
+plotTracks(c(bm,AT), from=78500000, to= 78700000,
+           transcriptAnnotation="symbol",
+           window="auto", cex.title=1, fontsize=10 )
+
+#We next add our data tracks to the plot. 
+#We first generate DataTrack objects with the DataTrack function. 
+#We include the information about how the track should be labaled and colored.
+
+SampleNameA.track = DataTrack(SampleNameA.200bins, 
                                 strand="*", genome="hg38", col.histogram='gray',
                                 fill.histogram='gray', name="H3K27ac", col.axis="black",
                                 cex.axis=0.6, ylim=c(0,80))
 
-WM9p44_sictrl_Input.track = DataTrack(WM9p44_sictrl_Input.200bins, 
+SampleNameB.track = DataTrack(SampleNameB.200bins, 
                                       strand="*", genome="hg38", col.histogram='gray',
                                       fill.histogram='gray', name="Input", col.axis="black",
                                       cex.axis=0.6, ylim=c(0,80))
 
-WM9p44_siHADAC2.track = DataTrack(WM9p44_siHADAC2.200bins, 
-                                  strand="*", genome="hg38", col.histogram='gray',
-                                  fill.histogram='gray', name="H3K27ac", col.axis="black",
-                                  cex.axis=0.6, ylim=c(0,80))
+#Finally, we can plot the tracks along with the genomic features.
 
+plotTracks(c (SampleNameA.track,SampleNameB.track,bm,AT),
+           from=78500000, to= 78700000, transcriptAnnotation="symbol", window="auto", 
+           type="histogram",cex.title=0.7, fontsize=10)
 
-WM9p85_sictrl.track = DataTrack(WM9p85_sictrl.200bins, 
-                                strand="*", genome="hg38", col.histogram='gray',
-                                fill.histogram='gray', name="H3K27ac", col.axis="black",
-                                cex.axis=0.6, ylim=c(0,80))
+#If you have already performed Peak identification by MACS or homer etc. you can also load your peakFiles into R to plot them also:
 
-WM9p85_sictrl_Input.track = DataTrack(WM9p85_sictrl_Input.200bins, 
-                                      strand="*", genome="hg38", col.histogram='gray',
-                                      fill.histogram='gray', name="Input", col.axis="black",
-                                      cex.axis=0.6, ylim=c(0,80))
-
-WM9p85_siHADAC2.track = DataTrack(WM9p85_siHADAC2.200bins, 
-                                strand="*", genome="hg38", col.histogram='gray',
-                                fill.histogram='gray', name="H3K27ac", col.axis="black",
-                                cex.axis=0.6, ylim=c(0,80))
-
-plotTracks(c (WM9p44_sictrl_Input.track,WM9p44_sictrl.track,WM9p44_siHADAC2.track,WM9p85_sictrl_Input.track,WM9p85_sictrl.track,WM9p85_siHADAC2.track,bm,AT),
-           from=78583089, to= 78700000, transcriptAnnotation="symbol", window="auto", type="histogram",cex.title=0.7, fontsize=10)
-
-
-setwd ("/Volumes/LacieRAID/ChIPseq/analysis/PeakFiles")
-peaks_WM9p44_sictrl = import ('findPeaks_ChIP-WM9p44-sictrl-7b_H3K27ac.FDR1e-6.bed')
-peaks_WM9p44_siHADAC2= import('findPeaks_ChIP-WM9p44-siHADAC2-12_H3K27ac.FDR1e-6.bed')
-peaks_WM9p85_sictrl = import('findPeaks_ChIP-WM9p85-sictrl-2_H3K27ac.FDR1e-6.bed')
-peaks_WM9p85_siHADAC2 = import ('findPeaks_ChIP-WM9p85-siHADAC2-4_H3K27ac.FDR1e-6.bed')
-
-
-peaks_WM9p44_sictrl.track = AnnotationTrack (peaks_WM9p44_sictrl, genome="hg38", options(ucscChromosomeNames=FALSE), chromosome='chr13',name="Peaks", shape='box', fill='orange', size=2.5 )
-peaks_WM9p44_siHADAC2.track = AnnotationTrack (peaks_WM9p44_siHADAC2, genome="hg38",options(ucscChromosomeNames=FALSE), chromosome='chr13', name="Peaks", shape='box', fill='blue3', size=2.5)
-peaks_WM9p85_sictrl.track =  AnnotationTrack (peaks_WM9p85_sictrl, genome="hg38",options(ucscChromosomeNames=FALSE), chromosome='chr13', name="Peaks", shape='box', fill='orange', size=2.5)
-peaks_WM9p85_siHADAC2.track =  AnnotationTrack (peaks_WM9p85_siHADAC2, genome="hg38",options(ucscChromosomeNames=FALSE), chromosome='chr13', name="Peaks", shape='box', fill='blue3', size=2.5)
+setwd ("/path/to/PeakFiles")
+peaks_SampleNasmeA= import ('SampleNameA.FDR1e-6.bed')
+peaks_SampleNameB= import('SampleNameB.FDR1e-6.bed')
 
 
 
-plotTracks(c(WM9p44_sictrl_Input.track,WM9p44_sictrl.track,peaks_WM9p44_sictrl.track, WM9p44_siHADAC2.track,peaks_WM9p44_siHADAC2.track,WM9p85_sictrl_Input.track, WM9p85_sictrl.track,peaks_WM9p85_sictrl.track,WM9p85_siHADAC2.track,peaks_WM9p85_siHADAC2.track, bm, AT),
+peaks_SampleNameA.track = AnnotationTrack (peaks_SampleNameA, genome="hg38", 
+                                           options(ucscChromosomeNames=FALSE), 
+                                           chromosome='chr13',name="Peaks", 
+                                           shape='box', fill='orange', size=2.5 )
+peaks_SampleNameB.track = AnnotationTrack (peaks_SampleNameB, genome="hg38",
+                                           options(ucscChromosomeNames=FALSE), 
+                                           chromosome='chr13', name="Peaks", 
+                                           shape='box', fill='blue3', size=2.5)
+
+#Now you can plot your tracks, peaks and genomic features at once:
+
+plotTracks(c(SampleNameA.track,peaks_SampleNameA.track, 
+             SampleNameB.track,peaks_SampleNameB.track , bm, AT),
            from=78580000, to=78680000, chromosome='chr13',
            transcriptAnnotation="symbol", window="auto", 
            type="histogram", cex.title=0.8, fontsize=12 )
-
-
-
-
-library (pheatmap)
-
-setwd ("/Volumes/LacieRAID/ChIPseq/analysis/PeakFiles/")
-ghist<- read.delim ("annotatePeaks_siHADAC2_AllTss_ghist.txt", header=TRUE)
-head (ghist)
-ghist$Gene
-m1<- as.matrix( ghist[,2:ncol(ghist)]) 
-rownames(m1)<- ghist$Gene
-m1<- m1+1
-range(m1)
-bk = unique(c(seq(1,14.9, length=100),seq(15,41,length=100)))
-
-hmcols<- colorRampPalette(c("white","blue"))(length(bk)-1)   
-pheatmap(m1, color=hmcols,  breaks=bk,  cluster_rows=FALSE, cluster_cols=FALSE, legend=FALSE, show_rownames=FALSE, show_colnames=FALSE)
-
-setwd ("/Volumes/LacieRAID/ChIPseq/analysis/PeakFiles/")
-ghist<- read.delim ("annotatePeaks_sictrl_AllTss_ghist.txt", header=TRUE)
-head (ghist)
-ghist$Gene
-m1<- as.matrix( ghist[,2:ncol(ghist)]) 
-rownames(m2)<- ghist$Gene
-m1<- m1+1
-range(m2)
-bk = unique(c(seq(1,14.9, length=100),seq(15,33,length=100)))
-
-hmcols<- colorRampPalette(c("white","blue"))(length(bk)-1)   
-pheatmap(m1, color=hmcols,  breaks=bk,  cluster_rows=FALSE, cluster_cols=FALSE, legend=FALSE, show_rownames=FALSE, show_colnames=FALSE)
-
-setwd ("/Volumes/LacieRAID/ChIPseq/analysis/PeakFiles/")
-ghist<- read.delim ("annotatePeaks_sictrl_RNF219_tss_ghist.txt", header=TRUE)
-head (ghist)
-ghist$Gene
-m1<- as.matrix( ghist[,2:ncol(ghist)]) 
-rownames(m1)<- ghist$Gene
-m1<- m1+1
-range(m1)
-bk = unique(c(seq(1,14.9, length=100),seq(14.9,10,length=100)))
-
-hmcols<- colorRampPalette(c("white","blue"))(length(bk)-1)   
-pheatmap(m1, color=hmcols,  breaks=bk,  cluster_rows=FALSE, cluster_cols=FALSE, legend=FALSE, show_rownames=FALSE, show_colnames=FALSE)
-
-setwd ("/Volumes/LacieRAID/ChIPseq/analysis/PeakFiles/")
-ghist<- read.delim ("annotatePeaks_siHADAC2_RNF219_tss_ghist.txt", header=TRUE)
-head (ghist)
-ghist$Gene
-m1<- as.matrix( ghist[,2:ncol(ghist)]) 
-rownames(m1)<- ghist$Gene
-m1<- m1+1
-range(m1)
-bk = unique(c(seq(1,14.9, length=100),seq(14.9,10,length=100)))
-
-hmcols<- colorRampPalette(c("white","blue"))(length(bk)-1)   
-pheatmap(m1, color=hmcols,  breaks=bk,  cluster_rows=FALSE, cluster_cols=FALSE, legend=FALSE, show_rownames=FALSE, show_colnames=FALSE)
 
 
 
