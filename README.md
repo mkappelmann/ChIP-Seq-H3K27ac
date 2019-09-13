@@ -40,4 +40,6 @@ In this tutorial, we want to focus on the data vizualization using RStudio.
 
 We need to load the *GenomicRanges*, *rtracklayer* and *IRanges* packages. To read the .bigwig file to R, we use the *import* function from the *rtracklayer* package. The result is a *GRanges* object, in which each read is represented as a genomic interval.
 
+Switch to the ChIP-Seq R code within the repository to perform further analysis: [ChIP-Seq.R](https://github.com/mkappelmann/ChIP-Seq-H3K27ac/blob/master/ChIP_Seq.R)
+
 
