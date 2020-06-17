@@ -1,5 +1,5 @@
-#!/usr/bin/perl -w -I /Users/mkappelmann-fenzl/Software/
-my $directory = "/Users/mkappelmann-fenzl";
+#!/usr/bin/perl -w -I /path/to/Software/
+my $directory = "/path/to/home";
 
 sub printCMD() {
 	print STDERR "\n\tUsage: perl FreeChistogram.pl <FreeC ratio file> <output file name> \n";
