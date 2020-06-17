@@ -18,10 +18,10 @@ my $tmpConfig = $r . ".txt";
 
 open OUT, ">$tmpConfig";
 print OUT "[general]\n";
-print OUT "chrFiles = /Users/mkappelmann-fenzl/GenomeIndices/FREEC/GRCh38\n";
-print OUT "chrLenFile= /Users/mkappelmann-fenzl/GenomeIndices/FREEC/GRCh38/chromosome.sizes\n";
+print OUT "chrFiles = /path/to/GenomeIndices/FREEC/GRCh38\n";
+print OUT "chrLenFile= /path/to/GenomeIndices/FREEC/GRCh38/chromosome.sizes\n";
 print OUT "coefficientOfVariation = 0.05\n";
-print OUT "gemMappabilityFile = /Users/mkappelmann-fenzl/miniconda3/pkgs/control-freec-11.6-h4a8c4bd_0/bin/out100m2_hg38.gem\n";
+print OUT "gemMappabilityFile = /path/to/miniconda3/pkgs/control-freec-11.6-h4a8c4bd_0/bin/out100m2_hg38.gem\n";
 print OUT "maxThreads = 3\n";
 print OUT "outputDir = $outputDir\n";
 print OUT "ploidy = $ploidy\n";
